@@ -1,0 +1,130 @@
+================================================================================
+                     ZEROTRACE: COMPREHENSIVE SETUP GUIDE
+================================================================================
+
+This guide provides step-by-step instructions for preparing the build 
+environment, compiling the C++ hardware engine, generating the PKI signing 
+keys, and building the final bootable ZeroTrace ISO.
+
+Since ZeroTrace interacts with raw hardware blocks via `ioctl` and bypasses 
+the OS cache using `O_DIRECT`, the compilation and ISO generation MUST be 
+performed in a Linux environment.
+
+If you are using Windows, you must use WSL2 (Windows Subsystem for Linux) 
+or a Virtual Machine running Ubuntu 22.04 LTS.
+
+--------------------------------------------------------------------------------
+STEP 1: PREPARE THE LINUX BUILD ENVIRONMENT (Ubuntu 22.04 LTS recommended)
+--------------------------------------------------------------------------------
+1. Open your Linux terminal (or WSL2 terminal on Windows).
+2. Update your local package repositories to ensure you get the latest tools:
+   $ sudo apt update && sudo apt upgrade -y
+
+3. Install the required system-level dependencies. These are required to 
+   compile the C++ source code and package the bootable ISO:
+   $ sudo apt install -y git python3 python3-pip python3-venv build-essential cmake xorriso squashfs-tools mtools libssl-dev libblkid-dev
+
+--------------------------------------------------------------------------------
+STEP 2: CLONE THE REPOSITORY
+--------------------------------------------------------------------------------
+1. Download the ZeroTrace source code from GitHub:
+   $ git clone https://github.com/Gokul0211/ZeroTrace---SIH-project.git
+
+2. Navigate into the project directory:
+   $ cd ZeroTrace---SIH-project
+
+--------------------------------------------------------------------------------
+STEP 3: SETUP THE PYTHON ENVIRONMENT
+--------------------------------------------------------------------------------
+ZeroTrace relies on specific Python libraries (SciPy for statistical K-S 
+testing, ReportLab for PDF generation, Pybind11 for C++ bindings). 
+It is best practice to install these in a virtual environment.
+
+1. Create a Python virtual environment:
+   $ python3 -m venv venv
+
+2. Activate the virtual environment:
+   $ source venv/bin/activate
+   (Your terminal prompt should now have "(venv)" at the beginning).
+
+3. Install the required Python packages:
+   $ pip3 install -r requirements.txt
+
+--------------------------------------------------------------------------------
+STEP 4: INITIALIZE THE PKI CERTIFICATE AUTHORITY
+--------------------------------------------------------------------------------
+ZeroTrace digitally signs all data destruction certificates using an RSA-4096 
+private key to prove the audit trail has not been tampered with. You must 
+generate this keypair before building the ISO.
+
+1. Run the key generation script:
+   $ python3 -c "from cert.signer import generate_keypair; generate_keypair()"
+
+2. Verify the keys were created. You should see two new files in your directory:
+   - zerotrace_private.pem
+   - zerotrace_public.pem
+
+--------------------------------------------------------------------------------
+STEP 5: BUILD THE BOOTABLE ISO
+--------------------------------------------------------------------------------
+You are now ready to build the OS-independent bootable USB image. The build 
+script will download a minimal Ubuntu root filesystem, chroot into it, 
+compile the C++ hardware engine for the target environment, and package 
+everything into an `.iso` file.
+
+1. Execute the master build script (requires sudo privileges):
+   $ sudo bash iso/build_iso.sh
+
+2. WAIT. This process will take 5 to 15 minutes depending on your internet 
+   connection, as it is downloading an operating system base and compiling C++.
+
+3. Once complete, you will see a success message and a new file in your 
+   directory named: `zerotrace-v1.0.0.iso`
+
+--------------------------------------------------------------------------------
+STEP 6: FLASH THE ISO TO A USB DRIVE
+--------------------------------------------------------------------------------
+You cannot simply drag and drop the `.iso` file onto a USB drive. It must be 
+"flashed" to make the USB drive bootable.
+
+IF YOU ARE ON WINDOWS:
+1. Download a free tool called Rufus (https://rufus.ie/).
+2. Insert a USB drive (WARNING: The USB drive will be completely erased).
+3. Open Rufus, select your USB drive under "Device".
+4. Click "SELECT" and choose your `zerotrace-v1.0.0.iso` file.
+5. Click "START". If prompted, select "Write in DD Image mode".
+
+IF YOU ARE ON LINUX / MAC:
+1. You can use BalenaEtcher (GUI) or the `dd` command line tool.
+2. Example `dd` command (BE VERY CAREFUL to select the correct /dev/sdX):
+   $ sudo dd if=zerotrace-v1.0.0.iso of=/dev/sdX bs=4M status=progress; sync
+
+--------------------------------------------------------------------------------
+STEP 7: BOOTING AND USING ZEROTRACE
+--------------------------------------------------------------------------------
+1. Insert the newly flashed USB drive into the computer containing the hard 
+   drives or SSDs you want to wipe.
+2. Turn on the computer and immediately press the Boot Menu key (usually F12, 
+   F10, F8, or DEL depending on the manufacturer).
+3. Select the USB drive to boot from.
+4. ZeroTrace will boot up and automatically launch the Curses Terminal UI (TUI).
+
+EXPORTING CERTIFICATES:
+If you want to save the PDF and JSON destruction certificates after wiping a 
+drive, plug in a SECOND USB drive formatted as FAT32 before the wipe finishes. 
+ZeroTrace will automatically export the audit trail to `/mnt/usb_export` on 
+that secondary drive.
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------------------------------
+Issue: "cmake: command not found" during iso build.
+Fix: Make sure you ran the `sudo apt install cmake` command from Step 1.
+
+Issue: Cannot boot from the USB drive.
+Fix: Ensure Secure Boot is temporarily disabled in your computer's BIOS/UEFI 
+settings, as this is a custom-compiled Linux kernel.
+
+Issue: Android Device shows "UNAUTHORIZED".
+Fix: Unlock the phone screen and tap "Always allow from this computer" when 
+the USB debugging prompt appears.
