@@ -1,0 +1,16 @@
+# requirements.txt
+# Install with: pip3 install -r requirements.txt
+
+# Certificate generation
+reportlab>=4.0.0
+cryptography>=41.0.0
+
+# pybind11 (also needs C++ build tools)
+pybind11>=2.11.0
+
+# Research / Telemetry dependencies
+numpy>=1.24.0
+scipy>=1.10.0
+
+# No additional dependencies — stdlib covers:
+# curses, subprocess, json, hashlib, uuid, threading, time, dataclasses, pathlib

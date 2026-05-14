@@ -1,0 +1,27 @@
+# iso/zerotrace_autostart.service
+# Placed at /etc/systemd/system/zerotrace.service in the ISO
+
+[Unit]
+Description=ZeroTrace Secure Data Sanitization
+After=network.target
+After=dev-sda.device
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/zerotrace
+ExecStart=/usr/bin/python3 -m ui.main
+Environment=PYTHONPATH=/opt/zerotrace
+Environment=ZEROTRACE_CERT_DIR=/mnt/usb_export
+Restart=on-failure
+RestartSec=3
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+
+[Install]
+WantedBy=multi-user.target
